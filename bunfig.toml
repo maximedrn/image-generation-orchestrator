@@ -1,0 +1,19 @@
+env = false
+telemetry = false
+
+[install]
+auto = "disable"
+exact = true
+linker = "isolated"
+
+[run]
+bun = true
+shell = "bun"
+
+[test]
+coveragePathIgnorePatterns = [
+  "src/main.ts",
+]
+coverageSkipTestFiles = true
+coverageThreshold = { lines = 0.9, functions = 0.9, statements = 0.9 }
+timeout = 5000

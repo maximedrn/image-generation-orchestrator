@@ -1,0 +1,14 @@
+.DS_Store
+.git
+.gitignore
+docs
+test
+coverage
+dist
+node_modules
+data
+config/platform.yaml
+*.log
+.env
+.env.*
+models

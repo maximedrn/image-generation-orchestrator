@@ -1,0 +1,14 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.verification/
+coverage/
+data/
+dist/
+node_modules/
+secrets/
+config/platform.yaml
+models/*
+!models/.gitkeep
+*.log
