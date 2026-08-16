@@ -1,14 +1,18 @@
+# Operating system files.
 .DS_Store
+
+# Environment files.
 .env
 .env.*
 !.env.example
-.verification/
-coverage/
-data/
-dist/
+
 node_modules/
-secrets/
-config/platform.yaml
-models/*
-!models/.gitkeep
+coverage/
+dist/
+
+# Logs.
 *.log
+
+# Models.
+config/models/*
+!config/models/.gitkeep

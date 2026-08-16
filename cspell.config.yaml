@@ -1,0 +1,52 @@
+$schema: https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json
+version: "0.2"
+language: en
+ignorePaths:
+  - bun.lock
+  - coverage
+  - data
+  - dist
+  - drizzle
+  - LICENSE
+  - models
+  - node_modules
+words:
+  - addgroup
+  - adduser
+  - artefacts
+  - behaviour
+  - biomejs
+  - bunfig
+  - bunx
+  - containerised
+  - CONTROLNET
+  - cooldown
+  - cuda
+  - DCMAKE
+  - DGGML
+  - effectful
+  - Filenaming
+  - lefthook
+  - Fwith
+  - GGML
+  - gguf
+  - glslc
+  - healthcheck
+  - HIPBLAS
+  - libgcc
+  - libgomp
+  - libstdc
+  - libvulkan
+  - middie
+  - millis
+  - noninteractive
+  - parameterised
+  - recognises
+  - serialising
+  - pids
+  - Qwik
+  - rocm
+  - safetensors
+  - SDCPP
+  - synchronisation
+  - tmpfs

@@ -35,7 +35,8 @@
       "!**/node_modules",
       "!**/coverage",
       "!**/dist",
-      "!**/data"
+      "!**/data",
+      "!**/drizzle"
     ]
   },
   "formatter": {
@@ -72,9 +73,7 @@
       "semicolons": "always",
       "trailingCommas": "all"
     },
-    "globals": [
-      "Bun"
-    ],
+    "globals": ["Bun"],
     "linter": {
       "enabled": true
     },
@@ -110,21 +109,20 @@
             "skipBlankLines": true,
             "skipIifes": false
           }
+        },
+        "useMaxParams": {
+          "level": "error",
+          "options": {
+            "max": 6
+          }
         }
       },
       "correctness": {
         "noNodejsModules": "error",
-        "noUndeclaredDependencies": "error",
+        "noUndeclaredDependencies": "off",
+        "noUnresolvedImports": "off",
         "useHookAtTopLevel": "off",
-        "useImportExtensions": {
-          "level": "error",
-          "options": {
-            "extensionMappings": {
-              "ts": "js",
-              "tsx": "js"
-            }
-          }
-        },
+        "useImportExtensions": "off",
         "useQwikValidLexicalScope": "off",
         "useUniqueElementIds": "off"
       },
@@ -134,11 +132,14 @@
         "useExplicitType": "error",
         "useThisInClassMethods": "off"
       },
-      "performance": "error",
+      "performance": {
+        "noNamespaceImport": "off"
+      },
       "preset": "all",
       "security": "error",
       "style": {
         "noDefaultExport": "error",
+        "noExcessiveClassesPerFile": "off",
         "noExcessiveLinesPerFile": {
           "level": "error",
           "options": {
@@ -146,12 +147,45 @@
             "skipBlankLines": true
           }
         },
+        "noInferrableTypes": "off",
+        "noMagicNumbers": "off",
         "noNestedTernary": "off",
         "noProcessEnv": "error",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["./**", "../**"],
+                "message": "Relative imports are forbidden: use the @app/* or @test/* aliases."
+              }
+            ]
+          }
+        },
         "noTernary": "off",
         "useBlockStatements": "off",
         "useComponentExportOnlyModules": "off",
         "useExportsLast": "error",
+        "useImportType": "off",
+        "useNamingConvention": {
+          "level": "error",
+          "options": {
+            "conventions": [
+              {
+                "formats": ["camelCase", "PascalCase"],
+                "selector": {
+                  "kind": "const"
+                }
+              },
+              {
+                "formats": ["camelCase", "PascalCase"],
+                "selector": {
+                  "kind": "objectLiteralProperty"
+                }
+              }
+            ]
+          }
+        },
         "useVueMultiWordComponentNames": "off"
       },
       "suspicious": "error"
@@ -160,17 +194,55 @@
   "overrides": [
     {
       "includes": [
-        "**"
+        "src/infrastructure/engine/stable-diffusion/*.ts",
+        "test/infrastructure/engine/*.test.ts"
       ],
+      "linter": {
+        "rules": {
+          "style": {
+            "useNamingConvention": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.constants.ts", "**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "security": {
+            "noSecrets": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**"],
       "linter": {
         "rules": {
           "style": {
             "useFilenamingConvention": {
               "level": "error",
               "options": {
-                "filenameCases": [
-                  "kebab-case",
-                  "export"
+                "filenameCases": ["kebab-case", "export"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**", "!src/infrastructure/engine/**", "!test/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["./**", "../**", "**/stable-diffusion*"],
+                    "message": "The stable-diffusion.cpp protocol must not leak outside src/infrastructure/engine/."
+                  }
                 ]
               }
             }
@@ -179,9 +251,21 @@
       }
     },
     {
-      "includes": [
-        "**/*.test.ts"
-      ],
+      "includes": ["test/**"],
+      "plugins": ["./.biome/rules.grit", "./.biome/test-rules.grit"]
+    },
+    {
+      "includes": ["drizzle.config.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.test.ts"],
       "linter": {
         "rules": {
           "correctness": {
@@ -189,8 +273,22 @@
           }
         }
       }
+    },
+    {
+      "includes": ["**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveLinesPerFunction": "off"
+          },
+          "performance": {
+            "noAwaitInLoops": "off"
+          }
+        }
+      }
     }
   ],
+  "plugins": ["./.biome/rules.grit"],
   "vcs": {
     "clientKind": "git",
     "enabled": true,

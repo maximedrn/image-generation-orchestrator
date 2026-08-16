@@ -1,45 +1,30 @@
-import { Module, type DynamicModule, type Provider } from "@nestjs/common";
+import { CoreModule } from "@app/core/core.module";
+import type { AppRuntime } from "@app/core/runtime/runtime.types";
+import { EnginesModule } from "@app/modules/engines/engines.module";
+import { HealthModule } from "@app/modules/health/health.module";
+import { JobsModule } from "@app/modules/jobs/jobs.module";
+import { MetricsModule } from "@app/modules/metrics/metrics.module";
+import { type DynamicModule, Module } from "@nestjs/common";
 
-import type { AppRuntime } from "@app/runtime/runtime.types.js";
-import { EFFECT_RUNTIME_TOKEN } from "@app/runtime/runtime.constants.js";
-import { EngineController } from "@app/engine/engine.controller.js";
-import { HealthController } from "@app/health/health.controller.js";
-import { HttpEffectService } from "@app/http/http-effect.service.js";
-import { MetricsController } from "@app/http/metrics.controller.js";
-import { JobController } from "@app/job/job.controller.js";
-import { ResultController } from "@app/job/result.controller.js";
-import { EffectRuntimeService } from "@app/runtime/runtime.service.js";
-import { BearerAuthGuard } from "@app/security/bearer-auth.guard.js";
-
-/** Root NestJS module containing transport adapters only. */
+/** Root module wiring the Effect runtime into the NestJS feature modules. */
 @Module({})
 class AppModule {
   /**
-   * Registers the already-built process-wide Effect runtime with NestJS.
+   * Builds the root module around the process-wide Effect runtime.
    *
-   * @param runtime - (AppRuntime) Managed Effect runtime for the application.
-   * @returns (DynamicModule) Root application module definition.
+   * @param {AppRuntime} runtime - Managed Effect runtime for the application.
+   * @returns {DynamicModule} Root application module definition.
    */
   static register(runtime: AppRuntime): DynamicModule {
-    const runtimeProvider: Provider<AppRuntime> = {
-      provide: EFFECT_RUNTIME_TOKEN,
-      useValue: runtime,
-    };
     return {
-      controllers: [
-        EngineController,
-        HealthController,
-        JobController,
-        MetricsController,
-        ResultController,
+      imports: [
+        CoreModule.register(runtime),
+        EnginesModule,
+        HealthModule,
+        JobsModule,
+        MetricsModule,
       ],
       module: AppModule,
-      providers: [
-        runtimeProvider,
-        EffectRuntimeService,
-        HttpEffectService,
-        BearerAuthGuard,
-      ],
     };
   }
 }

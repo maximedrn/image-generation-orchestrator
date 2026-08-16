@@ -1,0 +1,42 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Verify code
+        run: bun run verify
+
+  docker-app:
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Configure Docker Compose
+        run: docker compose config --quiet
+        env:
+          PLATFORM_API_KEY: ci-only-placeholder
+
+      - name: Build Docker image
+        run: docker build --file config/docker/app.Dockerfile --tag platform:ci .

@@ -7,10 +7,7 @@
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    "lib": [
-      "ES2024",
-      "DOM"
-    ],
+    "lib": ["ES2024", "DOM"],
     "module": "Preserve",
     "moduleDetection": "force",
     "moduleResolution": "bundler",
@@ -24,37 +21,19 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "paths": {
-      "@app/*": [
-        "./src/*"
-      ],
-      "@test/*": [
-        "./test/*"
-      ],
-      "@scripts/*": [
-        "./scripts/*"
-      ]
+      "@app/*": ["./src/*"],
+      "@test/*": ["./test/*"]
     },
     "resolveJsonModule": true,
+    "rootDir": ".",
     "skipLibCheck": true,
     "strict": true,
     "target": "ESNext",
-    "types": [
-      "bun"
-    ],
+    "types": ["bun"],
     "useDefineForClassFields": true,
     "useUnknownInCatchVariables": true,
-    "verbatimModuleSyntax": true,
-    "rootDir": "."
+    "verbatimModuleSyntax": true
   },
-  "exclude": [
-    "coverage",
-    "dist",
-    "node_modules",
-    "data"
-  ],
-  "include": [
-    "src/**/*.ts",
-    "test/**/*.ts",
-    "scripts/**/*.ts"
-  ]
+  "exclude": ["coverage", "dist", "node_modules", "data"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "build.ts", "drizzle.config.ts"]
 }

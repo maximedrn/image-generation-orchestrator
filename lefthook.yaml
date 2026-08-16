@@ -1,0 +1,24 @@
+# Pre-commit runs the same gates as CI, scoped to what is being committed where
+# that is safe. Type checking and tests are project-wide on purpose: a staged
+# file can break a module it does not import.
+pre-commit:
+  parallel: false
+  jobs:
+    - name: format
+      glob: "*.{ts,json,jsonc,css,html,yml,yaml,grit}"
+      run: bunx @biomejs/biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+
+    - name: spell
+      run: bun run spell
+
+    - name: typecheck
+      run: bun run typecheck
+
+    - name: test
+      run: bun run test
+
+pre-push:
+  jobs:
+    - name: verify
+      run: bun run verify

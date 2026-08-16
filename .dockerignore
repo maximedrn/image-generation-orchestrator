@@ -1,14 +1,24 @@
+# Operating system files.
 .DS_Store
+
+# Git.
 .git
+.github
 .gitignore
-docs
-test
-coverage
-dist
-node_modules
-data
-config/platform.yaml
-*.log
+
+# Environment files.
 .env
 .env.*
-models
+!.env.example
+
+# Node.js.
+node_modules
+coverage
+dist
+test
+
+# Logs.
+*.log
+
+# Models.
+config/models/*

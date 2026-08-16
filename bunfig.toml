@@ -13,7 +13,20 @@ shell = "bun"
 [test]
 coveragePathIgnorePatterns = [
   "src/main.ts",
+  # Test scaffolding: exercised through the suites it serves, not on its own.
+  "test/fixtures/*.ts",
 ]
 coverageSkipTestFiles = true
-coverageThreshold = { lines = 0.9, functions = 0.9, statements = 0.9 }
+# `functions` is pinned to zero on purpose: Bun counts every `Data.TaggedError`
+# declaration as an uncovered function, so error.types.ts reports 0% functions
+# with 100% lines and no test can move it. It must still be stated explicitly,
+# because an omitted metric is silently enforced at 100%.
+#
+# `lines` sits just under 100% for three reasons, all verified rather than
+# assumed. dispatcher-submission keeps its `Effect.onInterrupt` handler and
+# model-downloader its publish-rename branch, which the existence check ahead
+# of the download makes unreachable in-process. dispatcher.service then swings
+# between 98.21% and 100% across runs because its loop is forked in the
+# background, so the floor has to sit below the flaky value to stay meaningful.
+coverageThreshold = { functions = 0.0, lines = 0.98 }
 timeout = 5000

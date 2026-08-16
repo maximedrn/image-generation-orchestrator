@@ -1,0 +1,21 @@
+language js
+
+// Tests-only rule.
+//
+// A declaration initialized from a call or an `await` must state its type.
+// Inference silently rewrites what a test asserts: widen a service's return
+// type and the assertion keeps compiling against the new shape instead of
+// failing, which is exactly the regression the test existed to catch.
+//
+// This is deliberately not applied to `src`, where Effect Schema builders
+// derive their types from the schema itself and spelling them out by hand
+// would duplicate the definition.
+`const $name = $value` as $node where {
+  $value <: or {
+    `await $_`,
+    `$_($_)`,
+    `$_($_, $_)`,
+    `$_($_, $_, $_)`
+  },
+  register_diagnostic(span=$node, message="Declare the type explicitly: inference is forbidden in tests.", severity="error")
+}
