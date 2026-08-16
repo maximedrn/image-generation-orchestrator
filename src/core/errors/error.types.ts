@@ -21,6 +21,20 @@ class EngineUnavailableError extends Data.TaggedError(
   readonly message: string;
 }> {}
 
+/** Engine declined the operation for now and invites the caller to retry. */
+class EngineBusyError extends Data.TaggedError(ErrorTag.engineBusy)<{
+  readonly engineId: string;
+  readonly message: string;
+}> {}
+
+/** Engine no longer knows the remote job: the work is gone, not delayed. */
+class EngineJobNotFoundError extends Data.TaggedError(
+  ErrorTag.engineJobNotFound,
+)<{
+  readonly engineId: string;
+  readonly message: string;
+}> {}
+
 /** Engine returned a payload that does not satisfy its explicit contract. */
 class EngineProtocolError extends Data.TaggedError(ErrorTag.engineProtocol)<{
   readonly cause?: unknown;
@@ -93,6 +107,8 @@ class UnauthorizedError extends Data.TaggedError(ErrorTag.unauthorized)<{
 type PlatformError =
   | ConfigError
   | DatabaseError
+  | EngineBusyError
+  | EngineJobNotFoundError
   | EngineProtocolError
   | EngineRejectedError
   | EngineUnavailableError
@@ -110,6 +126,8 @@ export type { PlatformError };
 export {
   ConfigError,
   DatabaseError,
+  EngineBusyError,
+  EngineJobNotFoundError,
   EngineProtocolError,
   EngineRejectedError,
   EngineUnavailableError,

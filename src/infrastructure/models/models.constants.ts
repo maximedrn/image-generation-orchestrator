@@ -14,6 +14,7 @@ const ModelDownloadMessage = {
   requestFailed: "model download request failed",
   skipped: "model already present, skipping download",
   unreadableDirectory: "cannot create the model directory",
+  verificationFailed: "cannot read back the downloaded model to verify it",
   writeFailed: "cannot write the downloaded model",
 } as const;
 

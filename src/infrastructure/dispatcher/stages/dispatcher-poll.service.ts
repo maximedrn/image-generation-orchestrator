@@ -12,6 +12,7 @@ import {
   persistRemoteCancellation,
   persistRemoteFailure,
   persistStorageFailure,
+  retryOrFailJob,
 } from "@app/infrastructure/dispatcher/stages/dispatcher-persistence.service";
 import { EngineJobStatus } from "@app/infrastructure/engine/engine.constants";
 import type { EngineGatewayError } from "@app/infrastructure/engine/engine.interface";
@@ -116,13 +117,33 @@ const handlePollFailure = (
   job: Job,
   context: DispatcherPollContext,
   dependencies: DispatcherWorkerDependencies,
+  error: EngineGatewayError,
 ): Effect.Effect<void, DatabaseError | StorageError> =>
   Effect.gen(function* handlePollFailureEffect() {
+    // The engine answered, and its answer is "later". Penalising it would open
+    // the breaker against a healthy engine and stall the whole schedule.
+    if (error._tag === ErrorTag.engineBusy) {
+      return yield* pollRemoteJob(job, context, dependencies);
+    }
+    if (error._tag === ErrorTag.engineJobNotFound) {
+      yield* Effect.logWarning(DispatcherMessage.remoteJobLost, {
+        engineId: context.engine.id,
+        jobId: job.id,
+        remoteJobId: context.remoteJobId,
+      });
+      // Requeuing a job the caller cancelled would redo the very work they
+      // asked to stop, so an unbound cancellation is honoured as terminal.
+      return yield* job.cancelRequested
+        ? persistRemoteCancellation(job, dependencies)
+        : retryOrFailJob(job, dependencies);
+    }
     yield* dependencies.pool.recordFailure(context.engine.id);
     const failures: number = context.consecutiveFailures + 1;
     if (failures >= context.engine.circuitBreaker.failureThreshold) {
       yield* Effect.logWarning(DispatcherMessage.pollingDeferred, {
         engineId: context.engine.id,
+        errorMessage: error.message,
+        errorTag: error._tag,
         jobId: job.id,
         remoteJobId: context.remoteJobId,
       });
@@ -192,10 +213,10 @@ const pollRemoteJob = (
                 remoteResult: RemotePollResult,
               ): Effect.Effect<void, DatabaseError | StorageError> =>
                 Either.match(remoteResult, {
-                  onLeft: (): Effect.Effect<
-                    void,
-                    DatabaseError | StorageError
-                  > => handlePollFailure(job, context, dependencies),
+                  onLeft: (
+                    error: EngineGatewayError,
+                  ): Effect.Effect<void, DatabaseError | StorageError> =>
+                    handlePollFailure(job, context, dependencies, error),
                   onRight: (
                     remoteJob: EngineJob,
                   ): Effect.Effect<void, DatabaseError | StorageError> =>

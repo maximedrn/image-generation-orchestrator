@@ -26,6 +26,7 @@ const JobColumn = {
   model: "model",
   remoteJobId: "remote_job_id",
   requestJson: "request_json",
+  startedAt: "started_at",
   status: "status",
   updatedAt: "updated_at",
 } as const;
@@ -54,6 +55,17 @@ const OptionalJobField = {
   errorMessage: "errorMessage",
   leaseUntil: "leaseUntil",
   remoteJobId: "remoteJobId",
+} as const;
+
+/**
+ * Optional job properties copied from a row when the column is not null.
+ *
+ * Wider than `OptionalJobField`: a transition may never write `startedAt`,
+ * which is stamped once when the job is claimed.
+ */
+const DecodedJobField = {
+  ...OptionalJobField,
+  startedAt: "startedAt",
 } as const;
 
 /** Drizzle column modes spelled once instead of at every call site. */
@@ -119,6 +131,7 @@ export {
   DatabasePragma,
   DatabasePragmaValue,
   DatabaseSettings,
+  DecodedJobField,
   ExcludedRow,
   IndexName,
   JobColumn,

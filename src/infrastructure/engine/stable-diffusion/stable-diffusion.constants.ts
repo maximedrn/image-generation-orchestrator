@@ -29,15 +29,21 @@ const StableDiffusionJobStatus = {
 /** HTTP constants isolated inside the stable-diffusion.cpp adapter. */
 const StableDiffusionHttp = {
   accepted: 202,
+  conflict: 409,
   contentTypeJson: "application/json",
+  gone: 410,
   headerContentType: "content-type",
+  maxLoggedBodyLength: 500,
   methodGet: "GET",
   methodPost: "POST",
+  notFound: 404,
   ok: 200,
 } as const;
 
 /** Operator-facing messages emitted by the stable-diffusion.cpp adapter. */
 const StableDiffusionMessage = {
+  busy: "engine cannot honour the request yet",
+  jobNotFound: "engine no longer knows this remote job",
   rejected: "engine rejected request with HTTP",
   requestFailed: "engine request failed",
   schemaViolation: "engine response violates the expected schema",

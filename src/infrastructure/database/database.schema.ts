@@ -40,6 +40,7 @@ const jobs = sqliteTable(
     model: text(JobColumn.model),
     remoteJobId: text(JobColumn.remoteJobId),
     requestJson: text(JobColumn.requestJson).notNull(),
+    startedAt: text(JobColumn.startedAt),
     status: text(JobColumn.status).notNull(),
     updatedAt: text(JobColumn.updatedAt).notNull(),
   },

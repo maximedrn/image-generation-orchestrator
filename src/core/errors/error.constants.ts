@@ -2,6 +2,8 @@
 const ErrorTag = {
   config: "ConfigError",
   database: "DatabaseError",
+  engineBusy: "EngineBusyError",
+  engineJobNotFound: "EngineJobNotFoundError",
   engineProtocol: "EngineProtocolError",
   engineRejected: "EngineRejectedError",
   engineUnavailable: "EngineUnavailableError",

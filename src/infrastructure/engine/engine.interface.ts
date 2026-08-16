@@ -1,5 +1,7 @@
 import type { EngineConfig } from "@app/core/config/config.types";
 import type {
+  EngineBusyError,
+  EngineJobNotFoundError,
   EngineProtocolError,
   EngineRejectedError,
   EngineUnavailableError,
@@ -16,6 +18,8 @@ import type { Effect, Option } from "effect";
 
 /** Typed errors produced by a concrete engine network adapter. */
 type EngineGatewayError =
+  | EngineBusyError
+  | EngineJobNotFoundError
   | EngineProtocolError
   | EngineRejectedError
   | EngineUnavailableError;

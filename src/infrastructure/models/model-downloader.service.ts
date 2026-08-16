@@ -77,6 +77,18 @@ const fetchModel = (
               }),
             ),
     ),
+    Effect.zipRight(matchesDigest(fileSystem, model, temporaryPath)),
+    Effect.flatMap(
+      (matches: boolean): Effect.Effect<void, ModelDownloadError> =>
+        matches
+          ? Effect.void
+          : Effect.fail(
+              new ModelDownloadError({
+                message: ModelDownloadMessage.digestMismatch,
+                model: model.name,
+              }),
+            ),
+    ),
     Effect.zipRight(
       fileSystem
         .rename(temporaryPath, targetPath)
@@ -96,6 +108,10 @@ const fetchModel = (
 
 /**
  * Fetches one declared artefact unless the target file already exists.
+ *
+ * The digest is checked once, before the download is published. A file sitting
+ * at the target path was therefore already verified when it was written, so
+ * presence is treated as proof and startup stays free of a full rehash.
  *
  * @param {HttpClient.HttpClient} client - Effect HTTP client.
  * @param {FileSystem} fileSystem - Effect filesystem adapter.
@@ -118,51 +134,68 @@ const provisionModel = (
       (present: boolean): Effect.Effect<void, ModelDownloadError> =>
         present
           ? Effect.logInfo(ModelDownloadMessage.skipped, { model: model.name })
-          : fetchModel(client, fileSystem, model, targetPath).pipe(
-              Effect.zipRight(verifyDigest(fileSystem, model, targetPath)),
-            ),
+          : fetchModel(client, fileSystem, model, targetPath),
     ),
   );
 };
 
 /**
- * Verifies the declared SHA-256 digest when the operator provided one.
+ * Computes the SHA-256 digest of a file without ever holding it in memory.
+ *
+ * Checkpoints are routinely larger than the container's whole memory budget,
+ * so the bytes are folded into the hasher chunk by chunk as they are read.
+ *
+ * @param {FileSystem} fileSystem - Effect filesystem adapter.
+ * @param {ModelDownload} model - Declared artefact, used for error context.
+ * @param {string} path - File to digest.
+ * @returns {Effect.Effect<string, ModelDownloadError>} Hexadecimal digest.
+ */
+const digestFile = (
+  fileSystem: FileSystem,
+  model: ModelDownload,
+  path: string,
+): Effect.Effect<string, ModelDownloadError> =>
+  Effect.suspend((): Effect.Effect<string, ModelDownloadError> => {
+    const hasher: Bun.CryptoHasher = new Bun.CryptoHasher(
+      ContentDigest.algorithm,
+    );
+    return fileSystem.stream(path).pipe(
+      Stream.runForEach(
+        (chunk: Uint8Array): Effect.Effect<void> =>
+          Effect.sync((): void => {
+            hasher.update(chunk);
+          }),
+      ),
+      Effect.mapError(
+        mapDownloadError(model, ModelDownloadMessage.verificationFailed),
+      ),
+      Effect.map((): string => hasher.digest(ContentDigest.encoding)),
+    );
+  });
+
+/**
+ * Reports whether a file satisfies the declared SHA-256 digest.
+ *
+ * A model without a declared digest is accepted as-is; there is nothing to
+ * check against. Returning a boolean rather than failing lets the caller
+ * distinguish "this file is wrong" from "this file could not be read".
  *
  * @param {FileSystem} fileSystem - Effect filesystem adapter.
  * @param {ModelDownload} model - Declared artefact.
- * @param {string} targetPath - Published artefact path.
- * @returns {Effect.Effect<void, ModelDownloadError>} Integrity check effect.
+ * @param {string} path - File to check.
+ * @returns {Effect.Effect<boolean, ModelDownloadError>} Whether the file matches.
  */
-const verifyDigest = (
+const matchesDigest = (
   fileSystem: FileSystem,
   model: ModelDownload,
-  targetPath: string,
-): Effect.Effect<void, ModelDownloadError> =>
+  path: string,
+): Effect.Effect<boolean, ModelDownloadError> =>
   Option.match(Option.fromNullable(model.sha256), {
-    onNone: (): Effect.Effect<void, ModelDownloadError> => Effect.void,
-    onSome: (expected: string): Effect.Effect<void, ModelDownloadError> =>
-      fileSystem.readFile(targetPath).pipe(
-        Effect.mapError(
-          mapDownloadError(model, ModelDownloadMessage.writeFailed),
-        ),
-        Effect.flatMap(
-          (bytes: Uint8Array): Effect.Effect<void, ModelDownloadError> =>
-            new Bun.CryptoHasher(ContentDigest.algorithm)
-              .update(bytes)
-              .digest(ContentDigest.encoding) === expected
-              ? Effect.void
-              : fileSystem.remove(targetPath).pipe(
-                  Effect.ignore,
-                  Effect.zipRight(
-                    Effect.fail(
-                      new ModelDownloadError({
-                        message: ModelDownloadMessage.digestMismatch,
-                        model: model.name,
-                      }),
-                    ),
-                  ),
-                ),
-        ),
+    onNone: (): Effect.Effect<boolean, ModelDownloadError> =>
+      Effect.succeed(true),
+    onSome: (expected: string): Effect.Effect<boolean, ModelDownloadError> =>
+      digestFile(fileSystem, model, path).pipe(
+        Effect.map((actual: string): boolean => actual === expected),
       ),
   });
 
@@ -224,9 +257,10 @@ class ModelDownloader extends Effect.Service<ModelDownloader>()(
 
 export type { ModelDownloaderShape };
 export {
+  digestFile,
   fetchModel,
   ModelDownloader,
+  matchesDigest,
   provisionModel,
   syncModels,
-  verifyDigest,
 };

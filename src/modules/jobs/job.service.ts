@@ -61,6 +61,7 @@ const toJobResponse = (
           resultUrl(job.id, result.index),
         )
       : [],
+    startedAt: job.startedAt ?? null,
     status: job.status,
     updatedAt: job.updatedAt,
   };

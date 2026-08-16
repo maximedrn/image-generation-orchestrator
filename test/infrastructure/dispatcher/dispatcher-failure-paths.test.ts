@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
   DatabaseError,
+  EngineJobNotFoundError,
   EngineUnavailableError,
 } from "@app/core/errors/error.types";
 import type { DispatcherWorkerDependencies } from "@app/infrastructure/dispatcher/dispatcher.types";
@@ -252,5 +253,57 @@ describe("dispatcher persistence failures stay contained", (): void => {
     );
     // Contained: the reservation is released rather than leaked on failure.
     expect(harness.poolCalls.release).toBe(1);
+  });
+});
+
+describe("remote job lost by the engine", (): void => {
+  test("requeues instead of polling a remote job the engine forgot", async (): Promise<void> => {
+    const harness: WorkerHarness = openHarness({
+      script: { responses: [completedRemoteJob()] },
+    });
+    const job: Job = await claimFixtureJob(harness, "remote-forgotten");
+    await Effect.runPromise(
+      harness.repository.bindRemote(
+        job.id,
+        harness.engine.id,
+        RemoteJobId,
+        "2026-08-14T12:30:00.000Z",
+      ),
+    );
+    await Effect.runPromise(
+      pollRemoteJob(
+        job,
+        {
+          consecutiveFailures: 0,
+          engine: harness.engine,
+          remoteJobId: RemoteJobId,
+        },
+        {
+          ...harness.dependencies,
+          gateway: {
+            ...harness.dependencies.gateway,
+            poll: (): Effect.Effect<EngineJob, EngineGatewayError> =>
+              Effect.fail(
+                new EngineJobNotFoundError({
+                  engineId: harness.engine.id,
+                  message: "engine no longer knows this remote job",
+                }),
+              ),
+          },
+        },
+      ),
+    );
+    const current: Option.Option<Job> = await Effect.runPromise(
+      harness.repository.getById(job.id),
+    );
+    expect(Option.isSome(current)).toBe(true);
+    if (Option.isSome(current)) {
+      // The binding is released so the work can be submitted again, instead of
+      // holding a running slot against a job the engine will never return.
+      expect(current.value.status).toBe(JobStatus.queued);
+      expect(current.value.remoteJobId).toBeUndefined();
+    }
+    // A forgotten job is not an engine outage, so the breaker stays closed.
+    expect(harness.poolCalls.failure).toBe(0);
   });
 });

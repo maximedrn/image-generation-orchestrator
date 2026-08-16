@@ -33,6 +33,7 @@ interface Job {
   readonly leaseUntil?: string;
   readonly remoteJobId?: string;
   readonly request: JobCreateRequest;
+  readonly startedAt?: string;
   readonly status: JobStatusValue;
   readonly updatedAt: string;
 }
@@ -67,6 +68,7 @@ interface JobResponse {
   readonly id: string;
   readonly request: JobCreateRequest;
   readonly resultUrls: readonly string[];
+  readonly startedAt: string | null;
   readonly status: JobStatusValue;
   readonly updatedAt: string;
 }

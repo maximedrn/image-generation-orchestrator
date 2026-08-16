@@ -30,8 +30,16 @@ x-engine-common: &engine-common
     inference:
       aliases:
         - engine
-  # Every sd-server flag lives in one variable, so tuning never rebuilds an image.
-  command: ${ENGINE_ARGS:--m /models/model.gguf --listen-ip 0.0.0.0 --listen-port 8080 --vae-tiling}
+  # sd-server exits immediately when the checkpoint is absent, and
+  # `restart: unless-stopped` would turn that into a crash loop. The app owns
+  # model provisioning and only reports live once it is done, so that is the
+  # signal the engines wait on.
+  depends_on:
+    app:
+      condition: service_healthy
+  # The model path is kept out of ENGINE_ARGS on purpose: it is mandatory, and
+  # overriding a single tuning flag must not be able to drop it.
+  command: -m ${ENGINE_MODEL:-/models/model.safetensors} ${ENGINE_ARGS:---listen-ip 0.0.0.0 --listen-port 8080 --vae-tiling}
 
 services:
   app:
@@ -68,7 +76,12 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
-      start_period: 5s
+      # `provisionModels` runs before the listener opens, so answering here
+      # means every declared model is already on disk. The window has to cover
+      # a cold multi-gigabyte download; start_interval keeps the probe frequent
+      # so the service flips healthy as soon as it is ready.
+      start_period: ${MODEL_DOWNLOAD_GRACE:-30m}
+      start_interval: 5s
     extra_hosts:
       - host.docker.internal:host-gateway
     tmpfs:

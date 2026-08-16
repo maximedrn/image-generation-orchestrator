@@ -103,6 +103,7 @@ const claimQueuedJob = (
               .set({
                 attempt: sql`${jobs.attempt} + 1`,
                 leaseUntil,
+                startedAt: nowIso,
                 status: JobStatus.running,
                 updatedAt: nowIso,
               })

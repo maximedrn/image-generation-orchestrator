@@ -78,7 +78,7 @@ bun run dev
 Docker:
 
 ```bash
-docker compose --profile [cpu|cuda|rocm|vulkan] up --build
+docker compose --profile [cpu|cuda|rocm|vulkan] up --build -d
 ```
 
 Run the checks:

@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { ModelsConfig } from "@app/core/config/config.types";
 import type { ModelDownloadError } from "@app/core/errors/error.types";
+import { ContentDigest } from "@app/core/security/security.constants";
 import { syncModels } from "@app/infrastructure/models/model-downloader.service";
+import { ModelDownloadPolicy } from "@app/infrastructure/models/models.constants";
 import { FetchHttpClient, HttpClient } from "@effect/platform";
 import { FileSystem } from "@effect/platform/FileSystem";
 import { BunFileSystem } from "@effect/platform-bun";
@@ -138,5 +140,106 @@ describe("model downloader", (): void => {
       downloads: [],
     });
     expect(Exit.isSuccess(exit)).toBe(true);
+  });
+});
+
+describe("model integrity verification", (): void => {
+  test("publishes a model whose digest matches the declaration", async (): Promise<void> => {
+    // Several megabytes so the body spans many stream chunks: the digest has to
+    // be folded incrementally rather than computed over one buffered array.
+    const body: string = "sdxl-checkpoint-".repeat(300_000);
+    const expected: string = new Bun.CryptoHasher(ContentDigest.algorithm)
+      .update(body)
+      .digest(ContentDigest.encoding);
+    const origin: Bun.Server<undefined> = startOrigin(200, body);
+    const directory: string = `/tmp/platform-models-${crypto.randomUUID()}`;
+    const exit: Exit.Exit<void, ModelDownloadError> = await runSync({
+      directory,
+      downloads: [
+        {
+          name: TestArtefact.modelFileName,
+          sha256: expected,
+          url: `${origin.url}model.safetensors`,
+        },
+      ],
+    });
+    await origin.stop(true);
+    const published: string = `${directory}/${TestArtefact.modelFileName}`;
+    const partial: string = `${published}${ModelDownloadPolicy.temporarySuffix}`;
+    expect(Exit.isSuccess(exit)).toBe(true);
+    expect(await Bun.file(published).exists()).toBe(true);
+    expect(await Bun.file(published).text()).toBe(body);
+    // The temporary file is renamed, never left behind.
+    expect(await Bun.file(partial).exists()).toBe(false);
+  });
+
+  test("leaves nothing behind when the digest cannot be honoured", async (): Promise<void> => {
+    const origin: Bun.Server<undefined> = startOrigin(200, ModelBody);
+    const directory: string = `/tmp/platform-models-${crypto.randomUUID()}`;
+    const exit: Exit.Exit<void, ModelDownloadError> = await runSync({
+      directory,
+      downloads: [
+        {
+          name: TestArtefact.modelFileName,
+          sha256: "0".repeat(64),
+          url: `${origin.url}model.safetensors`,
+        },
+      ],
+    });
+    await origin.stop(true);
+    const published: string = `${directory}/${TestArtefact.modelFileName}`;
+    const partial: string = `${published}${ModelDownloadPolicy.temporarySuffix}`;
+    expect(Exit.isFailure(exit)).toBe(true);
+    // Neither path survives, so the next run cannot mistake it for provisioned.
+    expect(await Bun.file(published).exists()).toBe(false);
+    expect(await Bun.file(partial).exists()).toBe(false);
+  });
+});
+
+describe("provisioning of a model already on disk", (): void => {
+  test("trusts a file already at the target path without re-reading it", async (): Promise<void> => {
+    // The origin would fail any request: a present file must not be fetched,
+    // and its content must not be re-hashed either.
+    const origin: Bun.Server<undefined> = startOrigin(500, "must not be read");
+    const directory: string = `/tmp/platform-models-${crypto.randomUUID()}`;
+    const published: string = `${directory}/${TestArtefact.modelFileName}`;
+    await Bun.write(published, "content that does not match the digest");
+    const exit: Exit.Exit<void, ModelDownloadError> = await runSync({
+      directory,
+      downloads: [
+        {
+          name: TestArtefact.modelFileName,
+          sha256: "0".repeat(64),
+          url: `${origin.url}model.safetensors`,
+        },
+      ],
+    });
+    await origin.stop(true);
+    // Verification happens once, before publication; it is not repeated here.
+    expect(Exit.isSuccess(exit)).toBe(true);
+    expect(await Bun.file(published).text()).toBe(
+      "content that does not match the digest",
+    );
+  });
+
+  test("accepts a file already on disk when no digest is declared", async (): Promise<void> => {
+    const origin: Bun.Server<undefined> = startOrigin(500, "must not be read");
+    const directory: string = `/tmp/platform-models-${crypto.randomUUID()}`;
+    const published: string = `${directory}/${TestArtefact.modelFileName}`;
+    await Bun.write(published, "whatever-the-operator-put-there");
+    const exit: Exit.Exit<void, ModelDownloadError> = await runSync({
+      directory,
+      downloads: [
+        {
+          name: TestArtefact.modelFileName,
+          url: `${origin.url}model.safetensors`,
+        },
+      ],
+    });
+    await origin.stop(true);
+    expect(Exit.isSuccess(exit)).toBe(true);
+    expect(await Bun.file(published).text()).toBe(
+      "whatever-the-operator-put-there",
+    );
   });
 });

@@ -11,6 +11,8 @@ type InfrastructureError = Extract<
   PlatformError,
   | { readonly _tag: typeof ErrorTag.config }
   | { readonly _tag: typeof ErrorTag.database }
+  | { readonly _tag: typeof ErrorTag.engineBusy }
+  | { readonly _tag: typeof ErrorTag.engineJobNotFound }
   | { readonly _tag: typeof ErrorTag.engineProtocol }
   | { readonly _tag: typeof ErrorTag.engineRejected }
   | { readonly _tag: typeof ErrorTag.engineUnavailable }
@@ -84,6 +86,8 @@ const mapInfrastructureError = (
         HttpErrorMessage.databaseUnavailable,
         HttpStatus.SERVICE_UNAVAILABLE,
       );
+    case ErrorTag.engineBusy:
+    case ErrorTag.engineJobNotFound:
     case ErrorTag.engineProtocol:
       return publicException(
         HttpErrorCode.engineProtocol,
@@ -181,6 +185,8 @@ const mapPlatformErrorToHttp = (error: PlatformError): PublicHttpException => {
   switch (error._tag) {
     case ErrorTag.config:
     case ErrorTag.database:
+    case ErrorTag.engineBusy:
+    case ErrorTag.engineJobNotFound:
     case ErrorTag.engineProtocol:
     case ErrorTag.engineRejected:
     case ErrorTag.engineUnavailable:

@@ -27,7 +27,7 @@ import {
   JobRequestFixture,
   TestIdentifier,
 } from "@test/fixtures/platform.fixture";
-import { TestArtefact } from "@test/fixtures/test.constants";
+import { TestArtefact, TestInstant } from "@test/fixtures/test.constants";
 import { Effect, Either } from "effect";
 
 /** Job identifier reused by the public representation assertions. */
@@ -172,6 +172,20 @@ describe("public job representation", (): void => {
     expect(
       toJobResponse(createJobFixture(SampleJobId), results).resultUrls,
     ).toEqual([]);
+  });
+
+  test("exposes when the platform started working on the job", (): void => {
+    const claimed: Job = {
+      ...createJobFixture(SampleJobId),
+      startedAt: TestInstant.leaseRenewed,
+      status: JobStatus.running,
+    };
+    const response: JobResponse = toJobResponse(claimed, []);
+    expect(response.startedAt).toBe(TestInstant.leaseRenewed);
+    // A job still waiting in the queue has not started, and says so.
+    expect(
+      toJobResponse(createJobFixture(SampleJobId), []).startedAt,
+    ).toBeNull();
   });
 
   test("reports a stable public error for a failed job", (): void => {

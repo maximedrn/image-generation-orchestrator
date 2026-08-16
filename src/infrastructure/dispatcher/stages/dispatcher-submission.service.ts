@@ -46,6 +46,7 @@ const handleSubmissionFailure = (
     Effect.zipRight(
       Effect.logError(DispatcherMessage.submissionFailed, {
         engineId: reservation.engine.id,
+        errorMessage: error.message,
         errorTag: error._tag,
         jobId: job.id,
       }),

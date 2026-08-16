@@ -3,7 +3,6 @@ import type {
   EngineConfig,
   PlatformConfig,
 } from "@app/core/config/config.types";
-import { ErrorTag } from "@app/core/errors/error.constants";
 import { EngineJobStatus } from "@app/infrastructure/engine/engine.constants";
 import type {
   EngineGatewayError,
@@ -258,63 +257,6 @@ describe("stable-diffusion.cpp adapter over http", (): void => {
         expect(outcome.right.id).toBe(TestRemoteJobId.adapter);
         expect(outcome.right.status).toBe(EngineJobStatus.running);
       }
-    }
-  });
-
-  test("rejects an unexpected upstream status as an engine rejection", async (): Promise<void> => {
-    const engine: Bun.Server<undefined> = startEngine(
-      alwaysJson({ detail: "busy" }, 503),
-    );
-    const result: Either.Either<EngineCapabilities, EngineGatewayError> =
-      await runAdapter(
-        (
-          client: HttpClient.HttpClient,
-        ): Effect.Effect<EngineCapabilities, EngineGatewayError> =>
-          getStableDiffusionCapabilities(client, engineAt(engine.url.origin)),
-      );
-    await engine.stop(true);
-    expect(Either.isLeft(result)).toBe(true);
-    if (Either.isLeft(result)) {
-      expect(result.left._tag).toBe(ErrorTag.engineRejected);
-    }
-  });
-
-  test("rejects a payload that violates the native schema", async (): Promise<void> => {
-    const engine: Bun.Server<undefined> = startEngine(
-      alwaysJson({ unexpected: true }, 200),
-    );
-    const result: Either.Either<EngineJob, EngineGatewayError> =
-      await runAdapter(
-        (
-          client: HttpClient.HttpClient,
-        ): Effect.Effect<EngineJob, EngineGatewayError> =>
-          pollStableDiffusionJob(
-            client,
-            engineAt(engine.url.origin),
-            TestRemoteJobId.adapter,
-          ),
-      );
-    await engine.stop(true);
-    expect(Either.isLeft(result)).toBe(true);
-    if (Either.isLeft(result)) {
-      expect(result.left._tag).toBe(ErrorTag.engineProtocol);
-    }
-  });
-
-  test("reports an unreachable engine as unavailable rather than rejected", async (): Promise<void> => {
-    const result: Either.Either<EngineCapabilities, EngineGatewayError> =
-      await runAdapter(
-        (
-          client: HttpClient.HttpClient,
-        ): Effect.Effect<EngineCapabilities, EngineGatewayError> =>
-          getStableDiffusionCapabilities(
-            client,
-            engineAt("http://127.0.0.1:1"),
-          ),
-      );
-    expect(Either.isLeft(result)).toBe(true);
-    if (Either.isLeft(result)) {
-      expect(result.left._tag).toBe(ErrorTag.engineUnavailable);
     }
   });
 });

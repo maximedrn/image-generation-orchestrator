@@ -1,5 +1,7 @@
 import type { EngineConfig } from "@app/core/config/config.types";
 import {
+  EngineBusyError,
+  EngineJobNotFoundError,
   EngineProtocolError,
   EngineRejectedError,
   EngineUnavailableError,
@@ -96,13 +98,36 @@ const decodeStableDiffusionResponse = <A>(
             }),
         ),
       )
-    : Effect.fail(
-        new EngineRejectedError({
-          engineId: engine.id,
-          message: `${StableDiffusionMessage.rejected}: ${response.status}`,
-          statusCode: response.status,
-        }),
-      );
+    : response.status === StableDiffusionHttp.conflict
+      ? Effect.fail(
+          new EngineBusyError({
+            engineId: engine.id,
+            message: StableDiffusionMessage.busy,
+          }),
+        )
+      : response.status === StableDiffusionHttp.notFound ||
+          response.status === StableDiffusionHttp.gone
+        ? Effect.fail(
+            new EngineJobNotFoundError({
+              engineId: engine.id,
+              message: StableDiffusionMessage.jobNotFound,
+            }),
+          )
+        : response.text.pipe(
+            // The upstream body is the only place the real cause appears; without
+            // it a rejection is just a status code and has to be reproduced by hand.
+            Effect.catchAll((): Effect.Effect<string> => Effect.succeed("")),
+            Effect.flatMap(
+              (body: string): Effect.Effect<never, EngineRejectedError> =>
+                Effect.fail(
+                  new EngineRejectedError({
+                    engineId: engine.id,
+                    message: `${StableDiffusionMessage.rejected}: ${response.status} ${body.slice(0, StableDiffusionHttp.maxLoggedBodyLength)}`,
+                    statusCode: response.status,
+                  }),
+                ),
+            ),
+          );
 
 /**
  * Requests and decodes one native stable-diffusion.cpp payload.

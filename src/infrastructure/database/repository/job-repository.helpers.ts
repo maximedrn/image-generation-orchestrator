@@ -1,7 +1,7 @@
 import { DatabaseError } from "@app/core/errors/error.types";
 import {
   DatabaseMessage,
-  OptionalJobField,
+  DecodedJobField,
 } from "@app/infrastructure/database/database.constants";
 import type {
   JobRow,
@@ -75,7 +75,7 @@ const decodeStoredRequest = (
  * @returns {Partial<Job>} Empty object or a single-property patch.
  */
 const optionalField = <
-  K extends (typeof OptionalJobField)[keyof typeof OptionalJobField],
+  K extends (typeof DecodedJobField)[keyof typeof DecodedJobField],
 >(
   key: K,
   value: string | null,
@@ -109,11 +109,12 @@ const decodeJobRow = (row: JobRow): Effect.Effect<Job, DatabaseError> =>
         JobCreateRequest,
         JobStatusValue,
       ]): Job => ({
-        ...optionalField(OptionalJobField.engineId, row.engineId),
-        ...optionalField(OptionalJobField.errorCode, row.errorCode),
-        ...optionalField(OptionalJobField.errorMessage, row.errorMessage),
-        ...optionalField(OptionalJobField.leaseUntil, row.leaseUntil),
-        ...optionalField(OptionalJobField.remoteJobId, row.remoteJobId),
+        ...optionalField(DecodedJobField.engineId, row.engineId),
+        ...optionalField(DecodedJobField.errorCode, row.errorCode),
+        ...optionalField(DecodedJobField.errorMessage, row.errorMessage),
+        ...optionalField(DecodedJobField.leaseUntil, row.leaseUntil),
+        ...optionalField(DecodedJobField.remoteJobId, row.remoteJobId),
+        ...optionalField(DecodedJobField.startedAt, row.startedAt),
         attempt: row.attempt,
         cancelRequested: row.cancelRequested,
         cost: row.cost,

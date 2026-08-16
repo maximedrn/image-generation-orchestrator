@@ -22,6 +22,7 @@ const DispatcherMessage = {
   postSubmissionDeferred: "remote-bound worker deferred to lease recovery",
   recoveryDeferred: "remote job recovery deferred",
   recoveryFailed: "dispatcher recovery failed",
+  remoteJobLost: "engine forgot the remote job, applying the retry policy",
   retryPersistenceFailed: "dispatcher retry persistence failed",
   submissionFailed: "engine submission failed",
   unboundCancellationFailed: "unbound remote job cancellation failed",
