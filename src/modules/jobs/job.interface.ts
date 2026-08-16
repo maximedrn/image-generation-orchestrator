@@ -10,6 +10,7 @@ import type {
 import type {
   Job,
   JobCreateRequest,
+  JobProgress,
   JobResponse,
   JobResult,
   JobTransition,
@@ -75,6 +76,11 @@ interface JobRepositoryShape {
     DatabaseError
   >;
   readonly ping: () => Effect.Effect<void, DatabaseError>;
+  /** Records sampling progress without touching the job state machine. */
+  readonly recordProgress: (
+    id: string,
+    progress: JobProgress,
+  ) => Effect.Effect<void, DatabaseError>;
   readonly renewLease: (
     id: string,
     leaseUntil: string,

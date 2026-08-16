@@ -1,4 +1,4 @@
-name: stable-diffusion-platform
+name: image-generation-orchestrator
 
 x-engine-common: &engine-common
   restart: unless-stopped
@@ -89,7 +89,7 @@ services:
     volumes:
       - ./config:/config:ro
       - ${MODEL_DIRECTORY:-./models}:/models
-      - platform-data:/var/lib/stable-diffusion-platform
+      - platform-data:/var/lib/image-generation-orchestrator
     networks:
       - inference
       - egress

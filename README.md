@@ -1,4 +1,4 @@
-# Stable Diffusion Platform
+# Image Generation Orchestrator
 
 Asynchronous image inference platform powered by `stable-diffusion.cpp`.
 
@@ -6,7 +6,7 @@ Built with **NestJS + Fastify**, **Effect**, **Drizzle + SQLite**, and **Bun**. 
 
 ## Table of contents
 
-- [Stable Diffusion Platform](#stable-diffusion-platform)
+- [Image Generation Orchestrator](#image-generation-orchestrator)
   - [Table of contents](#table-of-contents)
   - [Compatibility](#compatibility)
   - [Prerequisites](#prerequisites)

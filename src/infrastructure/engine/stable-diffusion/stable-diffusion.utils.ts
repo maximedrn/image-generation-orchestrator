@@ -7,6 +7,7 @@ import type {
   EngineImageResult,
   EngineImageResultSet,
   EngineJob,
+  EngineJobProgress,
   EngineJobStatusValue,
 } from "@app/infrastructure/engine/engine.types";
 import {
@@ -136,6 +137,25 @@ const toEngineImageResultSet = (
   );
 
 /**
+ * Reads the sampling progress an engine reports, when it reports one.
+ *
+ * An engine built without the progress patch omits both fields, and one that
+ * has not started sampling announces a total of zero. Neither is progress, so
+ * both yield an absent value rather than a misleading zero percent.
+ *
+ * @param {StableDiffusionJob} job - Decoded native job.
+ * @returns {{ progress?: EngineJobProgress }} Progress patch, possibly empty.
+ */
+const toEngineJobProgress = (
+  job: StableDiffusionJob,
+): { progress?: EngineJobProgress } => {
+  const total: number = job.progress_steps ?? 0;
+  return total > 0
+    ? { progress: { completed: job.progress_step ?? 0, total } }
+    : {};
+};
+
+/**
  * Maps one decoded stable-diffusion.cpp job to the provider-neutral engine port.
  *
  * @param {StableDiffusionJob} job - Decoded native job.
@@ -144,6 +164,7 @@ const toEngineImageResultSet = (
 const toEngineJob = (job: StableDiffusionJob): EngineJob => ({
   error: job.error,
   id: job.id,
+  ...toEngineJobProgress(job),
   result: toEngineImageResultSet(job.result),
   status: toEngineJobStatus(job.status),
 });
@@ -153,6 +174,7 @@ export {
   toEngineImageResult,
   toEngineImageResultSet,
   toEngineJob,
+  toEngineJobProgress,
   toEngineJobStatus,
   toStableDiffusionImageGenerationRequest,
 };

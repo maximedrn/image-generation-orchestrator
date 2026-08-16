@@ -17,6 +17,7 @@ import { JobStatus } from "@app/modules/jobs/job.constants";
 import { currentIsoTimestamp } from "@app/modules/jobs/job.factory";
 import type {
   Job,
+  JobProgress,
   JobResult,
   JobTransition,
 } from "@app/modules/jobs/job.types";
@@ -248,6 +249,30 @@ const saveJobResults = (
   });
 
 /**
+ * Stores the sampling progress reported by the engine.
+ *
+ * Deliberately not a transition: progress is volatile telemetry, it must never
+ * move a job between states nor extend its lease.
+ *
+ * @param {PlatformDatabase} database - Migrated Drizzle database.
+ * @param {string} id - Durable job identifier.
+ * @param {JobProgress} progress - Progress reported by the engine.
+ * @returns {Effect.Effect<void, DatabaseError>} Durable write effect.
+ */
+const recordJobProgress = (
+  database: PlatformDatabase,
+  id: string,
+  progress: JobProgress,
+): Effect.Effect<void, DatabaseError> =>
+  runDatabase(DatabaseMessage.recordProgress, (): void => {
+    database
+      .update(jobs)
+      .set({ progressStep: progress.completed, progressSteps: progress.total })
+      .where(and(eq(jobs.id, id), eq(jobs.status, JobStatus.running)))
+      .run();
+  });
+
+/**
  * Applies one validated job state transition.
  *
  * Only the fields present in the transition reach the SET clause, so unrelated
@@ -280,6 +305,7 @@ export {
   bindRemoteJob,
   claimQueuedJob,
   createJobIfCapacity,
+  recordJobProgress,
   renewJobLease,
   requestJobCancellation,
   saveJobResults,

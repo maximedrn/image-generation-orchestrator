@@ -25,14 +25,14 @@ RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
   apk add --no-cache ca-certificates libgcc libstdc++ \
   && addgroup -S platform \
   && adduser -S -G platform platform \
-  && mkdir -p /var/lib/stable-diffusion-platform \
-  && chown platform:platform /var/lib/stable-diffusion-platform
+  && mkdir -p /var/lib/image-generation-orchestrator \
+  && chown platform:platform /var/lib/image-generation-orchestrator
 
 WORKDIR /app
 
 COPY --from=build --chown=platform:platform \
-  /workspace/dist/stable-diffusion-platform \
-  /app/stable-diffusion-platform
+  /workspace/dist/image-generation-orchestrator \
+  /app/image-generation-orchestrator
 
 # Mirrors the repository layout so the migrations folder resolves to the
 # same relative path in development and inside the image.
@@ -47,4 +47,4 @@ ENV PLATFORM_CONFIG=/config/platform.yaml
 
 EXPOSE 3000
 
-ENTRYPOINT ["/app/stable-diffusion-platform"]
+ENTRYPOINT ["/app/image-generation-orchestrator"]

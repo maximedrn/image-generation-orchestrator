@@ -1,6 +1,6 @@
 /** NestJS dependency-injection tokens bridging Nest and the Effect runtime. */
 const RuntimeToken = {
-  effectRuntime: Symbol.for("stable-diffusion-platform/effect-runtime"),
+  effectRuntime: Symbol.for("image-generation-orchestrator/effect-runtime"),
 } as const;
 
 /** Process signals handled by the NestJS shutdown hooks. */

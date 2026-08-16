@@ -30,9 +30,16 @@ interface EngineJobError {
 }
 
 /** Provider-neutral asynchronous inference job representation. */
+interface EngineJobProgress {
+  readonly completed: number;
+  readonly total: number;
+}
+
+/** Provider-neutral asynchronous engine job. */
 interface EngineJob {
   readonly error: EngineJobError | null;
   readonly id: string;
+  readonly progress?: EngineJobProgress;
   readonly result: EngineImageResultSet | null;
   readonly status: EngineJobStatusValue;
 }
@@ -80,6 +87,7 @@ export type {
   EngineImageResultSet,
   EngineJob,
   EngineJobError,
+  EngineJobProgress,
   EngineJobStatusValue,
   EngineReservation,
   EngineRuntimeState,

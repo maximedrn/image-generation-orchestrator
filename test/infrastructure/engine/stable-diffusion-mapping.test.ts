@@ -95,3 +95,29 @@ describe("stable-diffusion.cpp payload mapping", (): void => {
     expect(job.error?.code).toBe("OOM");
   });
 });
+
+describe("sampling progress mapping", (): void => {
+  test("carries the progress an engine reports", (): void => {
+    const job: EngineJob = toEngineJob({
+      ...NativeJobFixture,
+      progress_step: 24,
+      progress_steps: 40,
+    });
+    expect(job.progress).toEqual({ completed: 24, total: 40 });
+  });
+
+  test("reports nothing for an engine built without the progress patch", (): void => {
+    // Both fields absent: the adapter must stay usable against a stock build.
+    expect(toEngineJob(NativeJobFixture).progress).toBeUndefined();
+  });
+
+  test("reports nothing while the total is still unknown", (): void => {
+    // A total of zero is "not sampling yet", not "zero percent done".
+    const job: EngineJob = toEngineJob({
+      ...NativeJobFixture,
+      progress_step: 0,
+      progress_steps: 0,
+    });
+    expect(job.progress).toBeUndefined();
+  });
+});

@@ -1,0 +1,161 @@
+From 0cfc84ded9df8cd84f83ce86949332209b531dd2 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Maxime=20Dr=C3=A9an?= <maximedrean@proton.me>
+Date: Sun, 16 Aug 2026 23:08:17 +0200
+Subject: [PATCH 2/2] feat(server): report whole-job sampling progress on async
+ jobs
+
+An async generation reports nothing between accepting the request and
+producing a result. On a CPU backend that is several minutes of silence, and
+a client polling /sdcpp/v1/jobs/{id} cannot tell a slow job from a stuck one.
+
+sd_set_progress_callback already exists but the server never installs it, and
+the counter it feeds restarts on every batch image and every hires pass. Track
+the finished passes so the published counter covers the whole job, and derive
+the expected total from the request before generation starts. A custom sigma
+schedule overrides the requested step count, so the expectation follows
+custom_sigmas_count - 1 whenever one is supplied, as SamplePlan::resolve and
+make_hires_sigma_schedule do.
+
+Two fields are added to the documented job shape:
+
+  "progress_step":  sampling steps finished across the whole job
+  "progress_steps": total expected, 0 when the job has not reached sampling
+
+Both are purely additive, so an existing client ignoring them is unaffected.
+
+Requires the sd_progress_cb split, without which the counter would also carry
+tensor and tile counts on unrelated scales.
+---
+ examples/server/async_jobs.cpp | 73 ++++++++++++++++++++++++++++++++++
+ examples/server/async_jobs.h   |  7 ++++
+ 2 files changed, 80 insertions(+)
+
+diff --git a/examples/server/async_jobs.cpp b/examples/server/async_jobs.cpp
+index 1933dec..080434f 100644
+--- a/examples/server/async_jobs.cpp
++++ b/examples/server/async_jobs.cpp
+@@ -105,6 +105,73 @@ bool cancel_queued_job(AsyncJobManager& manager, AsyncGenerationJob& job) {
+     return true;
+ }
+ 
++// sd_set_progress_callback takes a plain function pointer and the worker runs
++// one job at a time, so the job being sampled is tracked in file scope rather
++// than captured.
++struct SamplingProgressState {
++    AsyncGenerationJob* job = nullptr;
++    int finished_passes     = 0;
++    int last_step           = 0;
++    int last_steps          = 0;
++};
++
++static SamplingProgressState sampling_progress_state;
++
++// A generation samples once per batch image, plus once more per image when
++// hires is on, and each pass counts from zero. Folding a finished pass into a
++// running total turns those passes into one counter for the whole job.
++static void on_sampling_progress(int step, int steps, float time, void* data) {
++    (void)time;
++    (void)data;
++    SamplingProgressState& state = sampling_progress_state;
++    if (state.job == nullptr) {
++        return;
++    }
++    if (step <= state.last_step) {
++        state.finished_passes += state.last_steps;
++    }
++    state.last_step  = step;
++    state.last_steps = steps;
++    state.job->progress_step.store(state.finished_passes + step, std::memory_order_relaxed);
++}
++
++// A custom sigma schedule overrides the requested step count: sampling runs
++// custom_sigmas_count - 1 steps and reports that as its own total, so deriving
++// the expectation from sample_steps would under-count it.
++static int expected_sampling_steps(const sd_img_gen_params_t& params) {
++    const int batch_count            = params.batch_count > 0 ? params.batch_count : 1;
++    const sd_sample_params_t& sample = params.sample_params;
++    const int steps                  = sample.custom_sigmas != nullptr && sample.custom_sigmas_count > 1
++                                           ? sample.custom_sigmas_count - 1
++                                           : (sample.sample_steps > 0 ? sample.sample_steps : 0);
++    int total                        = batch_count * steps;
++    if (params.hires.enabled) {
++        const sd_hires_params_t& hires = params.hires;
++        const int hires_steps          = hires.custom_sigmas != nullptr && hires.custom_sigmas_count > 1
++                                             ? hires.custom_sigmas_count - 1
++                                             : (hires.steps > 0 ? hires.steps : steps);
++        total += batch_count * hires_steps;
++    }
++    return total;
++}
++
++// Installs the callback for one generation and always clears it, so a later
++// job is never credited with steps from this one.
++struct SamplingProgressScope {
++    explicit SamplingProgressScope(AsyncGenerationJob& job) {
++        sampling_progress_state = SamplingProgressState{&job, 0, 0, 0};
++        sd_set_progress_callback(on_sampling_progress, nullptr);
++    }
++
++    ~SamplingProgressScope() {
++        sd_set_progress_callback(nullptr, nullptr);
++        sampling_progress_state = SamplingProgressState{};
++    }
++
++    SamplingProgressScope(const SamplingProgressScope&)            = delete;
++    SamplingProgressScope& operator=(const SamplingProgressScope&) = delete;
++};
++
+ json make_async_job_json(const AsyncJobManager& manager, const AsyncGenerationJob& job) {
+     json result;
+     result["id"]             = job.id;
+@@ -114,6 +181,8 @@ json make_async_job_json(const AsyncJobManager& manager, const AsyncGenerationJo
+     result["started"]        = job.started_at == 0 ? json(nullptr) : json(job.started_at);
+     result["completed"]      = job.completed_at == 0 ? json(nullptr) : json(job.completed_at);
+     result["queue_position"] = 0;
++    result["progress_step"]  = job.progress_step.load(std::memory_order_relaxed);
++    result["progress_steps"] = job.progress_steps.load(std::memory_order_relaxed);
+ 
+     if (job.status == AsyncJobStatus::Queued) {
+         size_t position = 1;
+@@ -170,10 +239,14 @@ bool execute_img_gen_job(ServerRuntime& runtime,
+                          std::string& error_message) {
+     sd_img_gen_params_t params = job.img_gen.to_sd_img_gen_params_t();
+ 
++    job.progress_steps.store(expected_sampling_steps(params), std::memory_order_relaxed);
++    job.progress_step.store(0, std::memory_order_relaxed);
++
+     SDImageVec results;
+ 
+     {
+         std::lock_guard<std::mutex> lock(*runtime.sd_ctx_mutex);
++        SamplingProgressScope progress_scope(job);
+         sd_image_t* raw_results = nullptr;
+         int num_results         = 0;
+         if (!generate_image(runtime.sd_ctx, &params, &raw_results, &num_results)) {
+diff --git a/examples/server/async_jobs.h b/examples/server/async_jobs.h
+index 89997a3..8120d34 100644
+--- a/examples/server/async_jobs.h
++++ b/examples/server/async_jobs.h
+@@ -1,5 +1,6 @@
+ #pragma once
+ 
++#include <atomic>
+ #include <condition_variable>
+ #include <cstdint>
+ #include <deque>
+@@ -35,6 +36,12 @@ struct AsyncGenerationJob {
+     int64_t created_at    = unix_timestamp_now();
+     int64_t started_at    = 0;
+     int64_t completed_at  = 0;
++    // Sampling steps finished across the whole job, and the total expected.
++    // Atomic because the progress callback runs on the worker thread outside
++    // the manager mutex, while HTTP handlers read these under it. A total of
++    // zero means the job has not reached sampling, or the total is unknown.
++    std::atomic<int> progress_step{0};
++    std::atomic<int> progress_steps{0};
+     ImgGenJobRequest img_gen;
+     VidGenJobRequest vid_gen;
+     std::vector<std::string> result_images_b64;
+-- 
+2.55.0
+

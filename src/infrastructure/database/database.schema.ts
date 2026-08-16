@@ -38,6 +38,8 @@ const jobs = sqliteTable(
     id: text(JobColumn.id).primaryKey(),
     leaseUntil: text(JobColumn.leaseUntil),
     model: text(JobColumn.model),
+    progressStep: integer(JobColumn.progressStep),
+    progressSteps: integer(JobColumn.progressSteps),
     remoteJobId: text(JobColumn.remoteJobId),
     requestJson: text(JobColumn.requestJson).notNull(),
     startedAt: text(JobColumn.startedAt),

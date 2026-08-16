@@ -36,6 +36,11 @@ RUN git init --quiet . \
   && git checkout --quiet FETCH_HEAD \
   && git submodule update --init --recursive --depth 1
 
+# Applied after the checkout so a SDCPP_COMMIT bump that invalidates them fails
+# the build loudly, instead of silently producing an image without progress.
+COPY config/docker/patches/ /patches/
+RUN git apply --verbose /patches/*.patch
+
 # ccache makes a commit bump, or a second backend built on the same machine,
 # a mostly cached compile instead of a full one.
 RUN --mount=type=cache,target=/root/.cache/ccache,sharing=locked \

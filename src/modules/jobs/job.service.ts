@@ -27,10 +27,28 @@ import type {
 import type {
   Job,
   JobCreateRequest,
+  JobProgress,
   JobResponse,
   JobResult,
 } from "@app/modules/jobs/job.types";
 import { Duration, Effect, Option } from "effect";
+
+/**
+ * Reads the sampling progress a job carries, when it carries one.
+ *
+ * A job that has not been sampled yet has no total, and a total of zero means
+ * the engine has not reached the sampling stage: neither is progress, so both
+ * read as absent rather than as zero percent.
+ *
+ * @param {Job} job - Durable job.
+ * @returns {JobProgress | null} Public progress, or null when unknown.
+ */
+const toJobProgress = (job: Job): JobProgress | null =>
+  Option.match(Option.fromNullable(job.progressSteps), {
+    onNone: (): JobProgress | null => null,
+    onSome: (total: number): JobProgress | null =>
+      total > 0 ? { completed: job.progressStep ?? 0, total } : null,
+  });
 
 /**
  * Converts a domain job plus result metadata into the stable public response.
@@ -55,6 +73,7 @@ const toJobResponse = (
           }
         : null,
     id: job.id,
+    progress: toJobProgress(job),
     request: job.request,
     resultUrls: succeeded
       ? results.map((result: JobResult): string =>
@@ -261,5 +280,6 @@ export {
   JobService,
   requireJob,
   submitJob,
+  toJobProgress,
   toJobResponse,
 };

@@ -86,6 +86,28 @@ const optionalField = <
   });
 
 /**
+ * Copies one optional numeric column into the domain job when it is present.
+ *
+ * A separate helper from `optionalField` so each keeps an exact value type:
+ * a progress counter is a number, and widening the pair to `string | number`
+ * would let a text column land on a numeric property unnoticed.
+ *
+ * @param {K} key - Optional job property name.
+ * @param {number | null} value - Nullable column value.
+ * @returns {Partial<Job>} Empty object or a single-property patch.
+ */
+const optionalNumericField = <
+  K extends (typeof DecodedJobField)[keyof typeof DecodedJobField],
+>(
+  key: K,
+  value: number | null,
+): Partial<Job> =>
+  Option.match(Option.fromNullable(value), {
+    onNone: (): Partial<Job> => ({}),
+    onSome: (present: number): Partial<Job> => ({ [key]: present }),
+  });
+
+/**
  * Converts a validated database row into the domain representation.
  *
  * @param {JobRow} row - Row selected through the Drizzle schema.
@@ -115,6 +137,11 @@ const decodeJobRow = (row: JobRow): Effect.Effect<Job, DatabaseError> =>
         ...optionalField(DecodedJobField.leaseUntil, row.leaseUntil),
         ...optionalField(DecodedJobField.remoteJobId, row.remoteJobId),
         ...optionalField(DecodedJobField.startedAt, row.startedAt),
+        ...optionalNumericField(DecodedJobField.progressStep, row.progressStep),
+        ...optionalNumericField(
+          DecodedJobField.progressSteps,
+          row.progressSteps,
+        ),
         attempt: row.attempt,
         cancelRequested: row.cancelRequested,
         cost: row.cost,

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "stable-diffusion-platform",
+      "name": "image-generation-orchestrator",
       "dependencies": {
         "@effect/platform": "0.97.1",
         "@effect/platform-bun": "0.91.2",

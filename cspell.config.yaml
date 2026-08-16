@@ -3,6 +3,7 @@ version: "0.2"
 language: en
 ignorePaths:
   - bun.lock
+  - config/docker/patches # upstream C++ diffs, not our prose
   - coverage
   - data
   - dist

@@ -15,6 +15,13 @@
       "when": 1786905941662,
       "tag": "0001_melodic_stephen_strange",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786907459972,
+      "tag": "0002_open_forgotten_one",
+      "breakpoints": true
     }
   ]
 }

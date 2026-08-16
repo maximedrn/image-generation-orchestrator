@@ -16,7 +16,10 @@ import {
 } from "@app/infrastructure/dispatcher/stages/dispatcher-persistence.service";
 import { EngineJobStatus } from "@app/infrastructure/engine/engine.constants";
 import type { EngineGatewayError } from "@app/infrastructure/engine/engine.interface";
-import type { EngineJob } from "@app/infrastructure/engine/engine.types";
+import type {
+  EngineJob,
+  EngineJobProgress,
+} from "@app/infrastructure/engine/engine.types";
 import { JobStatus } from "@app/modules/jobs/job.constants";
 import type { Job } from "@app/modules/jobs/job.types";
 import { Duration, Effect, Either, Option } from "effect";
@@ -157,6 +160,34 @@ const handlePollFailure = (
   });
 
 /**
+ * Stores freshly reported progress, and only when it actually moved.
+ *
+ * Polling runs several times per second while sampling advances once every few
+ * seconds, so writing unconditionally would turn one useful update into dozens
+ * of identical ones.
+ *
+ * @param {Job} job - Running platform job.
+ * @param {EngineJob} remoteJob - Decoded upstream job.
+ * @param {DispatcherWorkerDependencies} dependencies - Worker dependencies.
+ * @returns {Effect.Effect<void, DatabaseError>} Durable write, or nothing.
+ */
+const persistProgress = (
+  job: Job,
+  remoteJob: EngineJob,
+  dependencies: DispatcherWorkerDependencies,
+): Effect.Effect<void, DatabaseError> =>
+  Option.match(Option.fromNullable(remoteJob.progress), {
+    onNone: (): Effect.Effect<void, DatabaseError> => Effect.void,
+    onSome: (
+      progress: EngineJobProgress,
+    ): Effect.Effect<void, DatabaseError> =>
+      progress.completed === job.progressStep &&
+      progress.total === job.progressSteps
+        ? Effect.void
+        : dependencies.repository.recordProgress(job.id, progress),
+  });
+
+/**
  * Handles one successful upstream polling response.
  *
  * @param {Job} job - Running platform job.
@@ -173,6 +204,7 @@ const handlePollSuccess = (
 ): Effect.Effect<void, DatabaseError | StorageError> =>
   Effect.gen(function* handlePollSuccessEffect() {
     yield* dependencies.pool.recordSuccess(context.engine.id);
+    yield* persistProgress(job, remoteJob, dependencies);
     const terminal: boolean = yield* handleRemoteJob(
       job,
       remoteJob,

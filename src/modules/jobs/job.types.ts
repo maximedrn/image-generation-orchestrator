@@ -20,6 +20,12 @@ interface JobCreateRequest {
   readonly width: number;
 }
 
+/** Sampling progress of a running job, as the engine reports it. */
+interface JobProgress {
+  readonly completed: number;
+  readonly total: number;
+}
+
 /** Durable representation of one accepted job. */
 interface Job {
   readonly attempt: number;
@@ -31,6 +37,8 @@ interface Job {
   readonly errorMessage?: string;
   readonly id: string;
   readonly leaseUntil?: string;
+  readonly progressStep?: number;
+  readonly progressSteps?: number;
   readonly remoteJobId?: string;
   readonly request: JobCreateRequest;
   readonly startedAt?: string;
@@ -66,6 +74,7 @@ interface JobResponse {
   readonly createdAt: string;
   readonly error: JobResponseError | null;
   readonly id: string;
+  readonly progress: JobProgress | null;
   readonly request: JobCreateRequest;
   readonly resultUrls: readonly string[];
   readonly startedAt: string | null;
@@ -94,6 +103,7 @@ interface JobTransition {
 export type {
   Job,
   JobCreateRequest,
+  JobProgress,
   JobResponse,
   JobResponseError,
   JobResult,

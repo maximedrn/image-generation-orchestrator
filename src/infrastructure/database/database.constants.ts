@@ -24,6 +24,8 @@ const JobColumn = {
   id: "id",
   leaseUntil: "lease_until",
   model: "model",
+  progressStep: "progress_step",
+  progressSteps: "progress_steps",
   remoteJobId: "remote_job_id",
   requestJson: "request_json",
   startedAt: "started_at",
@@ -65,6 +67,8 @@ const OptionalJobField = {
  */
 const DecodedJobField = {
   ...OptionalJobField,
+  progressStep: "progressStep",
+  progressSteps: "progressSteps",
   startedAt: "startedAt",
 } as const;
 
@@ -118,6 +122,7 @@ const DatabaseMessage = {
   readJob: "reading job failed",
   readQueueHead: "reading queue head failed",
   readResult: "reading result metadata failed",
+  recordProgress: "recording job progress failed",
   renewLease: "renewing job lease failed",
   requestCancellation: "requesting cancellation failed",
   saveResults: "saving result metadata batch failed",

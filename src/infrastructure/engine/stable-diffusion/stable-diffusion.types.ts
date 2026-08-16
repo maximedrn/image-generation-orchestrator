@@ -64,6 +64,8 @@ interface StableDiffusionJob {
   readonly error: StableDiffusionJobError | null;
   readonly id: string;
   readonly kind: StableDiffusionJobKindValue;
+  readonly progress_step?: number;
+  readonly progress_steps?: number;
   readonly queue_position: number;
   readonly result: StableDiffusionImageResultSet | null;
   readonly started: number | null;
@@ -136,6 +138,8 @@ const StableDiffusionJobSchema: Schema.Schema<StableDiffusionJob> =
     error: Schema.NullOr(StableDiffusionJobErrorSchema),
     id: Schema.NonEmptyString,
     kind: Schema.Literal(StableDiffusionJobKind.imageGeneration),
+    progress_step: Schema.optionalWith(Schema.NonNegativeInt, { exact: true }),
+    progress_steps: Schema.optionalWith(Schema.NonNegativeInt, { exact: true }),
     queue_position: Schema.NonNegativeInt,
     result: Schema.NullOr(StableDiffusionImageResultSetSchema),
     started: Schema.NullOr(Schema.Int),

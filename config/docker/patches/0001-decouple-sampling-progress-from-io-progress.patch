@@ -1,0 +1,131 @@
+From 7cb724a944f1dfc95425a95051a019c3135c39ea Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Maxime=20Dr=C3=A9an?= <maximedrean@proton.me>
+Date: Sun, 16 Aug 2026 23:08:17 +0200
+Subject: [PATCH 1/2] fix: report only sampling steps through sd_progress_cb
+
+sd_progress_cb is a single global callback fed by three producers on three
+different scales: sampling steps in generate_image, tensor counts while a
+model is loaded, and tile counts while the VAE decodes tiled. Its signature
+carries no discriminator, so a consumer sees one counter that restarts on
+every model load and again on every decode, and cannot tell which unit any
+given event is in.
+
+That leaves the callback unusable for its stated purpose: a caller cannot
+report how far a generation has gone. sd-server, the only in-tree consumer
+that would want it, never installs it.
+
+Reserve sd_progress_cb for sampling. Extract the console renderer both other
+producers already relied on into render_step_progress, and give tiled decoding
+its own entry point.
+
+Console output is unchanged in every case. Without a callback installed the
+three paths render exactly as before. With one installed, model loading and
+tiled decoding stay as silent as they already were, since both returned early
+in that case; what changes is only that their events no longer reach the
+callback. A consumer that reports progress itself still gets no progress bar
+in its output.
+
+No public API change: sd_progress_cb_t and sd_set_progress_callback keep their
+signatures, and pretty_tile_progress is internal to src/core.
+---
+ src/core/ggml_extend.hpp |  6 +++---
+ src/core/util.cpp        | 29 +++++++++++++++++++++--------
+ src/core/util.h          |  1 +
+ 3 files changed, 25 insertions(+), 11 deletions(-)
+
+diff --git a/src/core/ggml_extend.hpp b/src/core/ggml_extend.hpp
+index b7f348f..6af09c2 100644
+--- a/src/core/ggml_extend.hpp
++++ b/src/core/ggml_extend.hpp
+@@ -884,7 +884,7 @@ __STATIC_INLINE__ sd::Tensor<float> process_tiles_2d(const sd::Tensor<float>& in
+         LOG_DEBUG("num tiles : %d, %d ", num_tiles_x, num_tiles_y);
+         LOG_DEBUG("optimal overlap : %f, %f (targeting %f)", tile_overlap_factor_x, tile_overlap_factor_y, tile_overlap_factor);
+         LOG_DEBUG("processing %i tiles", num_tiles);
+-        pretty_progress(0, num_tiles, 0.0f);
++        pretty_tile_progress(0, num_tiles, 0.0f);
+     }
+     for (int y = 0; y < small_height && !last_y; y += non_tile_overlap_y) {
+         int dy = 0;
+@@ -935,14 +935,14 @@ __STATIC_INLINE__ sd::Tensor<float> process_tiles_2d(const sd::Tensor<float>& in
+             if (!silent) {
+                 int64_t t2 = ggml_time_ms();
+                 last_time  = (t2 - t1) / 1000.0f;
+-                pretty_progress(tile_count, num_tiles, last_time);
++                pretty_tile_progress(tile_count, num_tiles, last_time);
+             }
+             tile_count++;
+         }
+         last_x = false;
+     }
+     if (!silent && tile_count < num_tiles) {
+-        pretty_progress(num_tiles, num_tiles, last_time);
++        pretty_tile_progress(num_tiles, num_tiles, last_time);
+     }
+     if (output.empty()) {
+         return {};
+diff --git a/src/core/util.cpp b/src/core/util.cpp
+index ff53c65..6b66951 100644
+--- a/src/core/util.cpp
++++ b/src/core/util.cpp
+@@ -533,11 +533,7 @@ static void print_progress_line(int step, int steps, const std::string& speed_te
+     fflush(stdout);  // for linux
+ }
+ 
+-void pretty_progress(int step, int steps, float time) {
+-    if (sd_progress_cb) {
+-        sd_progress_cb(step, steps, time, sd_progress_cb_data);
+-        return;
+-    }
++static void render_step_progress(int step, int steps, float time) {
+     if (step == 0) {
+         return;
+     }
+@@ -550,13 +546,30 @@ void pretty_progress(int step, int steps, float time) {
+     print_progress_line(step, steps, sd_format("%.2f%s", speed, unit));
+ }
+ 
+-void pretty_bytes_progress(int step, int steps, uint64_t bytes_processed, float elapsed_seconds) {
++void pretty_progress(int step, int steps, float time) {
+     if (sd_progress_cb) {
+-        float time = elapsed_seconds / (step + 1e-6f);
+         sd_progress_cb(step, steps, time, sd_progress_cb_data);
+         return;
+     }
+-    if (step == 0) {
++    render_step_progress(step, steps, time);
++}
++
++// Tiled decoding runs inside a single sampling step, so its tile counter is on
++// a different scale than the step counter sd_progress_cb reports. Keep it out
++// of the callback, and stay silent when one is installed: a consumer that
++// reports progress itself did not ask for a progress bar in its output.
++void pretty_tile_progress(int step, int steps, float time) {
++    if (sd_progress_cb) {
++        return;
++    }
++    render_step_progress(step, steps, time);
++}
++
++void pretty_bytes_progress(int step, int steps, uint64_t bytes_processed, float elapsed_seconds) {
++    // Loading weights is not sampling them: reporting tensor counts through
++    // sd_progress_cb would restart the step counter on every model load. Stay
++    // silent when a callback is installed, as this function already did.
++    if (sd_progress_cb || step == 0) {
+         return;
+     }
+ 
+diff --git a/src/core/util.h b/src/core/util.h
+index 35b5206..4f60f96 100644
+--- a/src/core/util.h
++++ b/src/core/util.h
+@@ -76,6 +76,7 @@ bool parse_strict_int(const std::string& text, int& value);
+ bool parse_strict_bool(const std::string& text, bool& value);
+ 
+ void pretty_progress(int step, int steps, float time);
++void pretty_tile_progress(int step, int steps, float time);
+ void pretty_bytes_progress(int step, int steps, uint64_t bytes_processed, float elapsed_seconds);
+ 
+ void log_printf(sd_log_level_t level, const char* file, int line, const char* format, ...);
+-- 
+2.55.0
+

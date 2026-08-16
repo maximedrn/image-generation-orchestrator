@@ -16,7 +16,7 @@ await Bun.build({
   compile: {
     autoloadBunfig: false,
     autoloadDotenv: false,
-    outfile: "dist/stable-diffusion-platform",
+    outfile: "dist/image-generation-orchestrator",
   },
   entrypoints: ["src/main.ts"],
   external: [...externalPackages],

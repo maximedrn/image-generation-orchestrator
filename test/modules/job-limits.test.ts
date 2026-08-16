@@ -203,3 +203,24 @@ describe("public job representation", (): void => {
     expect(response.request.model).toBe(TestIdentifier.model);
   });
 });
+
+describe("public progress representation", (): void => {
+  test("exposes progress once the engine reports a total", (): void => {
+    const running: Job = {
+      ...createJobFixture(SampleJobId),
+      progressStep: 12,
+      progressSteps: 20,
+      status: JobStatus.running,
+    };
+    expect(toJobResponse(running, []).progress).toEqual({
+      completed: 12,
+      total: 20,
+    });
+  });
+
+  test("reports no progress for a job that has not started sampling", (): void => {
+    expect(
+      toJobResponse(createJobFixture(SampleJobId), []).progress,
+    ).toBeNull();
+  });
+});

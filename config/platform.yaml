@@ -34,7 +34,7 @@ rateLimit:
   maxTrackedClients: 10000
   windowSeconds: 60
 storage:
-  root: "/var/lib/stable-diffusion-platform"
+  root: "/var/lib/image-generation-orchestrator"
 engines:
   - id: "primary"
     provider: "stable-diffusion-cpp"
