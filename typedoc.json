@@ -1,0 +1,28 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "categorizeByGroup": true,
+  "entryPointStrategy": "expand",
+  "entryPoints": ["src"],
+  "excludeExternals": true,
+  "excludeInternal": true,
+  "excludePrivate": false,
+  "githubPages": false,
+  "name": "Image Generation Orchestrator",
+  "out": "docs/api",
+  "readme": "none",
+  "requiredToBeDocumented": [
+    "Class",
+    "Enum",
+    "Function",
+    "Interface",
+    "Method",
+    "TypeAlias",
+    "Variable"
+  ],
+  "tsconfig": "tsconfig.json",
+  "validation": {
+    "invalidLink": true,
+    "notDocumented": true,
+    "notExported": true
+  }
+}

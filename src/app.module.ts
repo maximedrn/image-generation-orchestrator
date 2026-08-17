@@ -1,5 +1,6 @@
 import { CoreModule } from "@app/core/core.module";
 import type { AppRuntime } from "@app/core/runtime/runtime.types";
+import { DocsModule } from "@app/modules/docs/docs.module";
 import { EnginesModule } from "@app/modules/engines/engines.module";
 import { HealthModule } from "@app/modules/health/health.module";
 import { JobsModule } from "@app/modules/jobs/jobs.module";
@@ -19,6 +20,7 @@ class AppModule {
     return {
       imports: [
         CoreModule.register(runtime),
+        DocsModule,
         EnginesModule,
         HealthModule,
         JobsModule,

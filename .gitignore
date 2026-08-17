@@ -6,9 +6,14 @@
 .env.*
 !.env.example
 
+# Node.js.
 node_modules/
 coverage/
 dist/
+
+# Documentation.
+# Anchored: an unanchored pattern would also hide src/modules/docs.
+/docs/
 
 # Logs.
 *.log

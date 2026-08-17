@@ -24,9 +24,11 @@ const TestHttpMethod = {
 
 /** Absolute public paths, derived from the routes the controllers declare. */
 const TestRoute = {
+  engineCollection: `/${HttpRoute.engineCollection}`,
   healthLive: `/${HttpRoute.healthLive}`,
   healthReady: `/${HttpRoute.healthReady}`,
   jobCollection: `/${HttpRoute.jobCollection}`,
+  metrics: `/${HttpRoute.metrics}`,
 } as const;
 
 /** Base64 payloads standing in for generated images. */

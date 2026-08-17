@@ -61,5 +61,5 @@ const toJobUpdate = (transition: JobTransition, nowIso: string): JobUpdate => ({
   updatedAt: nowIso,
 });
 
-export type { JobUpdate };
+export type { JobUpdate, NullableJobColumn };
 export { nullableUpdate, toJobUpdate };

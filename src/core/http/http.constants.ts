@@ -19,23 +19,27 @@ const HttpParameter = {
  */
 const HttpSegment = {
   apiVersion: "v1",
+  docs: "docs",
   engines: "engines",
   health: "health",
   jobs: "jobs",
   live: "live",
   metrics: "metrics",
+  openapi: "openapi.json",
   ready: "ready",
   results: "results",
 } as const;
 
 /** Public HTTP routes centralized to avoid duplicated protocol strings. */
 const HttpRoute = {
+  docs: `${HttpSegment.apiVersion}${HttpPathSeparator}${HttpSegment.docs}`,
   engineCollection: `${HttpSegment.apiVersion}${HttpPathSeparator}${HttpSegment.engines}`,
   healthLive: `${HttpSegment.health}${HttpPathSeparator}${HttpSegment.live}`,
   healthReady: `${HttpSegment.health}${HttpPathSeparator}${HttpSegment.ready}`,
   jobCollection: `${HttpSegment.apiVersion}${HttpPathSeparator}${HttpSegment.jobs}`,
   jobId: `${HttpParameterPrefix}${HttpParameter.jobId}`,
   metrics: `${HttpSegment.apiVersion}${HttpPathSeparator}${HttpSegment.metrics}`,
+  openapi: `${HttpSegment.apiVersion}${HttpPathSeparator}${HttpSegment.openapi}`,
   result: `${HttpParameterPrefix}${HttpParameter.jobId}${HttpPathSeparator}${HttpSegment.results}${HttpPathSeparator}${HttpParameterPrefix}${HttpParameter.resultIndex}`,
 } as const;
 
@@ -75,6 +79,7 @@ const HttpErrorMessage = {
 const HttpHeader = {
   cacheControl: "cache-control",
   contentLength: "content-length",
+  contentType: "content-type",
   etag: "etag",
   retryAfter: "retry-after",
 } as const;

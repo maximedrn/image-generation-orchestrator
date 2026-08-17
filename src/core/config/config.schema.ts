@@ -40,6 +40,7 @@ const ServerSchema = Schema.Struct({
   // Defaults to false: enabling it without a trusted proxy in front lets any
   // caller forge X-Forwarded-For and get a fresh rate-limit bucket per request.
   trustProxy: Schema.optionalWith(Schema.Boolean, {
+    /** Value used when the key is absent from the document. */
     default: (): boolean => false,
   }),
 });

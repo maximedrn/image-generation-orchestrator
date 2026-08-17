@@ -1,14 +1,15 @@
 import { createParamDecorator, type ExecutionContext } from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
 
-/**
- * Reads the caller address without leaking the Fastify request into handlers.
- *
- * @param {unknown} _data - Unused decorator argument required by the Nest API.
- * @param {ExecutionContext} context - NestJS request context.
- * @returns {string} Remote address used as the rate-limit key.
- */
+/** Reads the caller address without leaking the Fastify request into handlers. */
 const ClientIp = createParamDecorator(
+  /**
+   * Extracts the remote address from the current request.
+   *
+   * @param {unknown} _data - Unused decorator argument required by the Nest API.
+   * @param {ExecutionContext} context - NestJS request context.
+   * @returns {string} Remote address used as the rate-limit key.
+   */
   (_data: unknown, context: ExecutionContext): string =>
     context.switchToHttp().getRequest<FastifyRequest>().ip,
 );

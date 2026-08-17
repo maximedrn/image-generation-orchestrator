@@ -17,6 +17,7 @@ import { Effect, Option, Stream } from "effect";
 
 /** Model provisioning port invoked once before the HTTP listener opens. */
 interface ModelDownloaderShape {
+  /** Fetches every declared artefact that is not already present. */
   readonly sync: () => Effect.Effect<void, ModelDownloadError>;
 }
 

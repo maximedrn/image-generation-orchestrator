@@ -206,6 +206,7 @@ const mapPlatformErrorToHttp = (error: PlatformError): PublicHttpException => {
   }
 };
 
+export type { InfrastructureError, RequestError };
 export {
   mapInfrastructureError,
   mapPlatformErrorToHttp,
