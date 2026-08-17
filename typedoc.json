@@ -8,7 +8,7 @@
   "excludePrivate": false,
   "githubPages": false,
   "name": "Image Generation Orchestrator",
-  "out": "docs/api",
+  "out": "docs",
   "readme": "none",
   "requiredToBeDocumented": [
     "Class",
